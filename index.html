@@ -89,7 +89,7 @@
           const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
           const [countdown, setCountdown] = useState(null);
           
-          // --- NOVO ESTADO: Ad Mode ---
+          // --- ESTADO: Ad Mode ---
           const [isAdMode, setIsAdMode] = useState(false);
           const isAdModeRef = useRef(false);
           
@@ -156,9 +156,10 @@
             const loop = (now) => {
               if (isPlaying && countdown === null) {
                 let time = timeRef.current;
-                const delta = (now - lastTime) / 1000;
+                // Cap delta time to 0.1s to prevent massive jumps and GPU freezes
+                const delta = Math.min((now - lastTime) / 1000, 0.1);
                 
-                // Temporizador Híbrido: sincroniza com o vídeo ou avança de forma autônoma
+                // Temporizador Híbrido OTIMIZADO
                 if (bgMode === 'video' && videoRef.current && !videoRef.current.ended && videoRef.current.readyState >= 2 && !videoRef.current.paused) {
                     time = videoRef.current.currentTime;
                 } else {
@@ -167,7 +168,6 @@
                 
                 timeRef.current = time;
 
-                // Ativar o Modo Anúncio / Ad Mode
                 const currentAdMode = time >= 29.5;
                 if (currentAdMode !== isAdModeRef.current) {
                     isAdModeRef.current = currentAdMode;
@@ -209,12 +209,21 @@
             return () => cancelAnimationFrame(frameId);
           }, [isPlaying, countdown, bgMode]);
 
+          // START RECORDING MODE OTIMIZADO
           const startRecordingMode = () => {
             setIsDownloadModalOpen(false);
             setIsRecordingMode(true);
             setShowGuides(false);
             resetTime();
             setCountdown(5);
+            
+            // Pré-Aquece o vídeo com a autorização do utilizador para evitar bloqueios ao fim de 5s
+            if (videoRef.current && bgMode === 'video') {
+                 videoRef.current.play().then(() => {
+                     videoRef.current.pause();
+                     videoRef.current.currentTime = 0;
+                 }).catch(() => {});
+            }
           };
 
           useEffect(() => {
@@ -252,21 +261,41 @@
                 
                 @keyframes orbit { 0% { transform: rotate(0deg) translateX(120px) rotate(0deg) scale(1); } 50% { transform: rotate(180deg) translateX(120px) rotate(-180deg) scale(1.5); } 100% { transform: rotate(360deg) translateX(120px) rotate(-360deg) scale(1); } }
                 @keyframes orbit-reverse { 0% { transform: rotate(360deg) translateX(80px) rotate(-360deg) scale(0.8); } 50% { transform: rotate(180deg) translateX(80px) rotate(-180deg) scale(1.2); } 100% { transform: rotate(0deg) translateX(80px) rotate(0deg) scale(0.8); } }
-                .orbiting-dot-1 { position: absolute; top: 50%; left: 50%; margin-top: -3px; margin-left: -3px; width: 6px; height: 6px; background-color: #0043FF; border-radius: 50%; box-shadow: 0 0 12px 4px rgba(0,67,255,0.5); animation: orbit 5s linear infinite; }
-                .orbiting-dot-2 { position: absolute; top: 50%; left: 50%; margin-top: -2px; margin-left: -2px; width: 4px; height: 4px; background-color: #F4F4F4; border-radius: 50%; box-shadow: 0 0 8px 2px rgba(255,255,255,0.4); animation: orbit-reverse 4s linear infinite; }
+                .orbiting-dot-1 { position: absolute; top: 50%; left: 50%; margin-top: -3px; margin-left: -3px; width: 6px; height: 6px; background-color: #0043FF; border-radius: 50%; box-shadow: 0 0 12px 4px rgba(0,67,255,0.5); animation: orbit 5s linear infinite; will-change: transform; }
+                .orbiting-dot-2 { position: absolute; top: 50%; left: 50%; margin-top: -2px; margin-left: -2px; width: 4px; height: 4px; background-color: #F4F4F4; border-radius: 50%; box-shadow: 0 0 8px 2px rgba(255,255,255,0.4); animation: orbit-reverse 4s linear infinite; will-change: transform; }
                 
-                .color-graded-video { filter: contrast(1.05) saturate(1.10); }
+                .color-graded-video { filter: contrast(1.05) saturate(1.10); will-change: transform; }
                 .vignette-effect { background: radial-gradient(circle, rgba(0,0,0,0) 50%, rgba(0,0,0,0.4) 100%); pointer-events: none; }
                 
-                /* Animações dos Flares do Ad Mode */
+                /* Animações dos Flares (Otimizados com will-change) */
                 @keyframes spinSlow { 100% { transform: rotate(360deg); } }
                 @keyframes spinSlowReverse { 100% { transform: rotate(-360deg); } }
-                .animate-spin-slow { animation: spinSlow 20s linear infinite; }
-                .animate-spin-slow-reverse { animation: spinSlowReverse 25s linear infinite; }
+                .animate-spin-slow { animation: spinSlow 20s linear infinite; will-change: transform; }
+                .animate-spin-slow-reverse { animation: spinSlowReverse 25s linear infinite; will-change: transform; }
+                
+                /* NOVAS ANIMAÇÕES EXTRAVAGANTES DO AD MODE */
+                @keyframes adWordPop { 
+                  0% { transform: scale(0.3) translateY(60px) rotate(-15deg); opacity: 0; filter: blur(12px); } 
+                  50% { transform: scale(1.4) translateY(-10px) rotate(5deg); opacity: 1; filter: blur(0px); } 
+                  70% { transform: scale(0.95) translateY(5px) rotate(-2deg); } 
+                  100% { transform: scale(1) translateY(0) rotate(0); opacity: 1; filter: blur(0px); } 
+                }
+                .word-reveal-ad { display: inline-block; animation: adWordPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; will-change: transform, opacity; }
+                
+                @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                @keyframes marqueeReverse { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
+                .animate-marquee { display: flex; width: 200%; animation: marquee 15s linear infinite; will-change: transform; }
+                .animate-marquee-reverse { display: flex; width: 200%; animation: marqueeReverse 20s linear infinite; will-change: transform; }
+                
+                @keyframes floatUp { 0% { transform: translateY(100vh) scale(0.5) rotate(0deg); opacity: 0; } 20% { opacity: 0.8; } 80% { opacity: 0.8; } 100% { transform: translateY(-20vh) scale(1.5) rotate(360deg); opacity: 0; } }
+                .floating-shape { position: absolute; animation: floatUp linear infinite; will-change: transform; }
+                
+                @keyframes pulseIntense { 0%, 100% { transform: scale(1); opacity: 0.3; } 50% { transform: scale(1.1); opacity: 0.7; } }
+                .animate-pulse-intense { animation: pulseIntense 2s ease-in-out infinite; will-change: transform, opacity; }
               `}</style>
 
               {isDownloadModalOpen && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
                   <div className="bg-[#111] border border-white/10 rounded-3xl p-8 max-w-lg w-full shadow-2xl relative">
                     <h2 className="text-2xl font-black mb-2 flex items-center gap-3 tracking-tight text-white">
                       <Video className="text-[#0043FF]" size={28} /> Preparar para Gravação
@@ -370,15 +399,17 @@
                 </div>
               )}
 
-              <div className="flex-1 h-full flex items-center justify-center relative p-0 sm:p-8 bg-black">
+              <div className="flex-1 h-full flex items-center justify-center relative p-0 sm:p-8 bg-[#050505]">
                 
+                {/* REMOVIDO: backdrop-blur-md (Era a principal causa do travamento) */}
                 {countdown !== null && countdown > 0 && (
-                  <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
+                  <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-[#050505]">
                     <h2 className="text-4xl font-black text-white mb-6 text-center leading-tight">
                       Inicie a sua gravação no OBS<br/>
                       <span className="text-[#0043FF]">A reprodução arranca em:</span>
                     </h2>
-                    <div className="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(0,67,255,0.8)] animate-pulse">
+                    {/* Transformado scale em vez de pulse para melhor performance gráfica */}
+                    <div className="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(0,67,255,0.8)] transition-transform duration-500 scale-110">
                       {countdown}
                     </div>
                   </div>
@@ -391,7 +422,7 @@
                 )}
 
                 {!isRecordingMode && (
-                  <div className="absolute top-6 right-6 flex items-center gap-4 z-50 bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 hidden sm:flex">
+                  <div className="absolute top-6 right-6 flex items-center gap-4 z-50 bg-black/80 px-4 py-2 rounded-2xl border border-white/10 hidden sm:flex">
                      <div className="flex flex-col items-end">
                        <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-[0.2em]">Timecode</span>
                        <span ref={hudTimeRef} className="text-xl font-mono text-white tracking-widest leading-none mt-1">0.00s</span>
@@ -431,14 +462,35 @@
 
                   {/* Camada 2: O AD MODE (Fundo Branco Publicitário) */}
                   <div className={`absolute inset-0 bg-[#F8F9FA] transition-opacity duration-1000 ease-in-out z-[5] overflow-hidden ${isAdMode ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                      {/* Efeitos de Flares Geométricos Giratórios */}
-                      <div className="absolute top-[-30%] left-[-30%] w-[160%] h-[160%] rounded-full bg-[radial-gradient(circle_at_center,rgba(0,67,255,0.06)_0%,transparent_50%)] animate-spin-slow"></div>
-                      <div className="absolute bottom-[-20%] right-[-20%] w-[150%] h-[150%] rounded-full bg-[radial-gradient(circle_at_center,rgba(0,200,255,0.05)_0%,transparent_50%)] animate-spin-slow-reverse"></div>
-                      <div className="absolute top-[20%] left-[10%] w-[100%] h-[100%] bg-[radial-gradient(circle_at_center,rgba(0,67,255,0.03)_0%,transparent_60%)] animate-pulse"></div>
+                      {/* Flares Geométricos Giratórios e Pulsantes (Mais agressivos) */}
+                      <div className="absolute top-[-30%] left-[-30%] w-[160%] h-[160%] rounded-full bg-[radial-gradient(circle_at_center,rgba(0,67,255,0.08)_0%,transparent_50%)] animate-spin-slow"></div>
+                      <div className="absolute bottom-[-20%] right-[-20%] w-[150%] h-[150%] rounded-full bg-[radial-gradient(circle_at_center,rgba(0,200,255,0.08)_0%,transparent_50%)] animate-spin-slow-reverse"></div>
+                      <div className="absolute top-[20%] left-[10%] w-[100%] h-[100%] bg-[radial-gradient(circle_at_center,rgba(0,67,255,0.1)_0%,transparent_60%)] animate-pulse-intense"></div>
                       
-                      {/* Marca de Água Gigante da ORY */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                           <span className="text-[250px] font-black tracking-tighter text-black select-none">ORY</span>
+                      {/* Formas Flutuantes (Cruzes e Círculos Médicos) */}
+                      {isAdMode && (
+                          <div className="absolute inset-0 pointer-events-none">
+                             <div className="floating-shape text-[#0043FF]/20 font-black text-6xl left-[10%]" style={{ animationDuration: '6s', animationDelay: '0s' }}>+</div>
+                             <div className="floating-shape text-[#00c8ff]/20 font-black text-4xl left-[80%]" style={{ animationDuration: '8s', animationDelay: '2s' }}>+</div>
+                             <div className="floating-shape border-4 border-[#0043FF]/10 rounded-full w-16 h-16 left-[20%]" style={{ animationDuration: '7s', animationDelay: '4s' }}></div>
+                             <div className="floating-shape text-[#0043FF]/15 font-black text-8xl left-[60%]" style={{ animationDuration: '5s', animationDelay: '1s' }}>+</div>
+                          </div>
+                      )}
+
+                      {/* Marquee Background (Texto gigante a passar no fundo) */}
+                      <div className="absolute inset-0 flex flex-col justify-center items-center opacity-[0.04] pointer-events-none -rotate-12 scale-[1.5] gap-8">
+                           <div className="animate-marquee">
+                               <span className="text-[120px] font-black tracking-tighter text-black px-4">ORY CLINICA ORY CLINICA ORY CLINICA ORY CLINICA</span>
+                           </div>
+                           <div className="animate-marquee-reverse">
+                               <span className="text-[120px] font-black tracking-tighter text-black px-4">ODONTOLOGIA ESTÉTICA ODONTOLOGIA ESTÉTICA ODONTOLOGIA ESTÉTICA</span>
+                           </div>
+                           <div className="animate-marquee">
+                               <span className="text-[120px] font-black tracking-tighter text-[#0043FF] px-4">TECNOLOGIA DE PONTA TECNOLOGIA DE PONTA TECNOLOGIA DE PONTA</span>
+                           </div>
+                           <div className="animate-marquee-reverse">
+                               <span className="text-[120px] font-black tracking-tighter text-black px-4">HARMONIZAÇÃO FACIAL HARMONIZAÇÃO FACIAL HARMONIZAÇÃO FACIAL</span>
+                           </div>
                       </div>
                   </div>
 
@@ -466,7 +518,7 @@
                   {/* Camada 4: As Legendas / Textos (Dinâmicos) */}
                   <div className={`absolute left-0 right-0 px-6 z-20 pointer-events-none flex flex-col items-center transition-all duration-700 ease-in-out ${isAdMode ? 'inset-y-0 justify-center' : 'bottom-20'}`}>
                     {activeSubtitle && (
-                      <div className={`relative py-3 px-5 transition-all duration-700 ${isAdMode ? 'w-full max-w-lg scale-110' : 'bg-[#0f0f0f]/45 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] subtitle-container'}`}>
+                      <div className={`relative py-3 px-5 transition-all duration-700 ${isAdMode ? 'w-full max-w-lg scale-110 drop-shadow-2xl' : 'bg-[#0f0f0f]/45 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] subtitle-container'}`}>
                         
                         {/* Pontos a orbitar apenas na vista de vídeo */}
                         {!isAdMode && (
@@ -477,7 +529,7 @@
                         )}
 
                         {/* O Texto em Si */}
-                        <div className={`relative flex flex-wrap justify-center gap-x-2 z-10 ${isAdMode ? 'gap-y-2 leading-[1.15]' : 'gap-y-0 max-w-[95%] leading-[1.1]'}`}>
+                        <div className={`relative flex flex-wrap justify-center z-10 ${isAdMode ? 'gap-x-3 gap-y-3 leading-[1.05]' : 'gap-x-2 gap-y-0 max-w-[95%] leading-[1.1]'}`}>
                           {activeSubtitle.text.split(' ').map((word, idx) => {
                             const cleanWord = word.replace(/[\.,!\?]/g, '');
                             const keywordList = ['Luíza', 'Luiza', 'Laura', 'animada', 'contenção', 'ORY', 'SORRIR', 'ORYGINAL', 'ORYGEM', 'Odontologia', 'Harmonização', 'Alinhadores', 'avaliação'];
@@ -486,14 +538,16 @@
                             // Cores adaptativas para Vídeo vs AD Mode
                             let textColorClass = '';
                             if (isAdMode) {
-                                textColorClass = isKeyword ? 'text-[#0043FF] drop-shadow-[0_4px_15px_rgba(0,67,255,0.25)]' : 'text-[#303030] drop-shadow-sm';
+                                textColorClass = isKeyword ? 'text-[#0043FF] drop-shadow-[0_8px_20px_rgba(0,67,255,0.4)] scale-110 origin-center' : 'text-[#202020] drop-shadow-lg';
                             } else {
                                 textColorClass = isKeyword ? 'text-glow-blue' : 'text-[#F4F4F4] text-glow-white';
                             }
                             
+                            const animationClass = isAdMode ? 'word-reveal-ad' : 'word-reveal';
+                            
                             return (
-                              <span key={`${activeSubtitle.id}-${idx}`} className="word-reveal" style={{ animationDelay: `${idx * 0.05}s` }}>
-                                <span className={`font-black uppercase tracking-tight transition-all duration-300 ${isAdMode ? 'text-[34px] sm:text-[42px] md:text-[46px]' : 'text-[26px] md:text-[30px]'} ${textColorClass}`}>
+                              <span key={`${activeSubtitle.id}-${idx}`} className={animationClass} style={{ animationDelay: `${idx * 0.05}s` }}>
+                                <span className={`font-black uppercase tracking-tight transition-all duration-300 ${isAdMode ? 'text-[40px] sm:text-[48px] md:text-[54px] block transform hover:scale-110' : 'text-[26px] md:text-[30px]'} ${textColorClass}`}>
                                   {word}
                                 </span>
                               </span>
