@@ -518,7 +518,7 @@
                   {/* Camada 4: As Legendas / Textos (Dinâmicos) */}
                   <div className={`absolute left-0 right-0 px-6 z-20 pointer-events-none flex flex-col items-center transition-all duration-700 ease-in-out ${isAdMode ? 'inset-y-0 justify-center' : 'bottom-20'}`}>
                     {activeSubtitle && (
-                      <div className={`relative py-3 px-5 transition-all duration-700 ${isAdMode ? 'w-full max-w-lg scale-110 drop-shadow-2xl' : 'bg-[#0f0f0f]/45 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] subtitle-container'}`}>
+                      <div className={`relative py-3 px-5 transition-all duration-700 ${isAdMode ? 'w-full max-w-md drop-shadow-2xl' : 'bg-[#0f0f0f]/45 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] subtitle-container'}`}>
                         
                         {/* Pontos a orbitar apenas na vista de vídeo */}
                         {!isAdMode && (
@@ -529,7 +529,7 @@
                         )}
 
                         {/* O Texto em Si */}
-                        <div className={`relative flex flex-wrap justify-center z-10 ${isAdMode ? 'gap-x-3 gap-y-3 leading-[1.05]' : 'gap-x-2 gap-y-0 max-w-[95%] leading-[1.1]'}`}>
+                        <div className={`relative flex flex-wrap justify-center mx-auto z-10 ${isAdMode ? 'gap-x-2 gap-y-1 max-w-[95%] leading-none' : 'gap-x-2 gap-y-0 max-w-[95%] leading-[1.1]'}`}>
                           {activeSubtitle.text.split(' ').map((word, idx) => {
                             const cleanWord = word.replace(/[\.,!\?]/g, '');
                             const keywordList = ['Luíza', 'Luiza', 'Laura', 'animada', 'contenção', 'ORY', 'SORRIR', 'ORYGINAL', 'ORYGEM', 'Odontologia', 'Harmonização', 'Alinhadores', 'avaliação'];
@@ -547,7 +547,7 @@
                             
                             return (
                               <span key={`${activeSubtitle.id}-${idx}`} className={animationClass} style={{ animationDelay: `${idx * 0.05}s` }}>
-                                <span className={`font-black uppercase tracking-tight transition-all duration-300 ${isAdMode ? 'text-[40px] sm:text-[48px] md:text-[54px] block transform hover:scale-110' : 'text-[26px] md:text-[30px]'} ${textColorClass}`}>
+                                <span className={`font-black uppercase tracking-tight transition-all duration-300 ${isAdMode ? 'text-[32px] sm:text-[38px] md:text-[42px] inline-block transform hover:scale-110' : 'text-[26px] md:text-[30px]'} ${textColorClass}`}>
                                   {word}
                                 </span>
                               </span>
