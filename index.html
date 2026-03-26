@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORY Studio - Editor Cinematográfico</title>
+    
+    <!-- Importar Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Importar Bibliotecas React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Importar Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-black text-white m-0 p-0 overflow-hidden w-screen h-screen font-sans">
+
+    <div id="root" class="w-full h-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- ÍCONES ---
+        const IconBase = ({ children, size = 24, className = "", fill = "none", ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+        );
+        const Play = (props) => <IconBase {...props}><polygon points="5 3 19 12 5 21 5 3"/></IconBase>;
+        const Pause = (props) => <IconBase {...props}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></IconBase>;
+        const Video = (props) => <IconBase {...props}><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></IconBase>;
+        const RefreshCw = (props) => <IconBase {...props}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></IconBase>;
+        const Eye = (props) => <IconBase {...props}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></IconBase>;
+        const EyeOff = (props) => <IconBase {...props}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></IconBase>;
+        const Upload = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></IconBase>;
+        const ImageIcon = (props) => <IconBase {...props}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></IconBase>;
+        const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
+
+        const ORY_COLORS = { blue: '#0043FF', dark: '#303030', light: '#F4F4F4', green: '#00FF00' };
+
+        const subtitleData = [
+          { id: 1, start: 0.616, end: 1.850, text: "A Laurinha finalmente" },
+          { id: 2, start: 1.850, end: 3.418, text: "ouviu os meus conselhos" },
+          { id: 3, start: 3.418, end: 4.435, text: "e começou a usar" },
+          { id: 4, start: 4.435, end: 5.902, text: "os alinhadores." },
+          { id: 5, start: 5.902, end: 6.669, text: "Laurinha, agora eu quero" },
+          { id: 6, start: 6.669, end: 8.570, text: "você fale as suas experiências" },
+          { id: 7, start: 8.570, end: 9.237, text: "e principalmente" },
+          { id: 8, start: 9.237, end: 11.254, text: "as suas expectativas." },
+          { id: 9, start: 11.254, end: 12.055, text: "O mais importante," },
+          { id: 10, start: 12.055, end: 14.239, text: "está animada?" },
+          { id: 11, start: 14.239, end: 15.806, text: "Essa frase é a marca dela" },
+          { id: 12, start: 15.806, end: 17.157, text: "e eu estou animada, viu?" },
+          { id: 13, start: 17.157, end: 18.324, text: "Porque afinal de contas," },
+          { id: 14, start: 18.324, end: 18.924, text: "ela prometeu que" },
+          { id: 15, start: 18.924, end: 19.858, text: "vou ficar cinco anos" },
+          { id: 16, start: 19.858, end: 21.259, text: "mais jovem." },
+          { id: 17, start: 21.259, end: 22.843, text: "Brincadeiras a parte," },
+          { id: 18, start: 22.843, end: 24.377, text: "a doutora sempre me orientou" },
+          { id: 19, start: 24.377, end: 24.894, text: "a respeito" },
+          { id: 20, start: 24.894, end: 26.595, text: "da minha mordida ser errada" },
+          { id: 21, start: 26.595, end: 27.145, text: "e meu sorriso" },
+          { id: 22, start: 27.145, end: 27.945, text: "não me incomodava" },
+          { id: 23, start: 27.945, end: 29.429, text: "porque ele era bonito." },
+          { id: 24, start: 29.429, end: 31.663, text: "Mas o tempo passando" },
+          { id: 25, start: 31.663, end: 32.214, text: "e eu descobri" },
+          { id: 26, start: 32.214, end: 32.847, text: "que nunca é tarde" },
+          { id: 27, start: 32.847, end: 34.014, text: "para começar." },
+          { id: 28, start: 34.014, end: 34.815, text: "E com a facilidade" },
+          { id: 29, start: 34.815, end: 36.382, text: "dos alinhadores com sucesso," },
+          { id: 30, start: 36.382, end: 37.766, text: "o que eu vejo aqui na clínica," },
+          { id: 31, start: 37.766, end: 39.050, text: "nos próprios pacientes." },
+          { id: 32, start: 39.050, end: 40.217, text: "Pensei agora é minha vez." },
+          { id: 33, start: 40.217, end: 41.384, text: "Preciso botar essa arcada" },
+          { id: 34, start: 41.384, end: 42.718, text: "no local certinho" },
+          { id: 35, start: 42.718, end: 43.252, text: "para diminuir" },
+          { id: 36, start: 43.252, end: 44.036, text: "esse desconforto" },
+          { id: 37, start: 44.036, end: 46.670, text: "disfuncional da minha ATM." },
+          { id: 38, start: 46.670, end: 47.937, text: "Eu não sei muito bem o nome," },
+          { id: 39, start: 47.937, end: 48.437, text: "mas é isso." },
+          { id: 40, start: 48.437, end: 49.038, text: "Estou animada," },
+          { id: 41, start: 49.038, end: 50.305, text: "vamos aí para a jornada" },
+          { id: 42, start: 50.305, end: 51.505, text: "o tempo é reduzido," },
+          { id: 43, start: 51.505, end: 52.756, text: "então estou contando com tudo" },
+          { id: 44, start: 52.756, end: 54.173, text: "isso para ser um sucesso." }
+        ];
+
+        const DRIVE_VIDEO_URL = "https://drive.google.com/uc?export=download&id=1mhzVx6_IVbl9UZ6JOfsOj3haLKM_ZQEK";
+
+        function App() {
+          // OTIMIZAÇÃO DE PERFORMANCE E ESTADOS
+          const [isPlaying, setIsPlaying] = useState(false);
+          const [isRecordingMode, setIsRecordingMode] = useState(false);
+          const [activeSubtitle, setActiveSubtitle] = useState(null);
+          const [showGuides, setShowGuides] = useState(false);
+          const [bgMode, setBgMode] = useState('video');
+          const [localVideoUrl, setLocalVideoUrl] = useState('');
+          const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+          const [countdown, setCountdown] = useState(null);
+          
+          // Refs de Performance
+          const videoRef = useRef(null);
+          const fileInputRef = useRef(null);
+          const timeRef = useRef(0);
+          const activeSubRef = useRef(null);
+          
+          // DOM Refs
+          const previewProgressBarRef = useRef(null);
+          const hudTimeRef = useRef(null);
+
+          const getZoomLevel = (time) => {
+            if (time >= 4.4 && time <= 8.5) return 1.25;
+            if (time >= 15.8 && time <= 20.0) return 1.28;
+            if (time >= 24.8 && time <= 28.0) return 1.25;
+            if (time >= 40.2 && time <= 44.0) return 1.22;
+            if (time >= 50.3) return 1.25;
+            return 1.15; 
+          };
+
+          const safePlayVideo = () => {
+              if (videoRef.current && videoRef.current.networkState !== 3) {
+                  const playPromise = videoRef.current.play();
+                  if (playPromise !== undefined) {
+                      playPromise.catch(error => console.warn("A reprodução do vídeo foi bloqueada:", error));
+                  }
+              }
+          };
+
+          const togglePlay = () => {
+            if (!isPlaying) {
+              if (bgMode === 'video') safePlayVideo();
+              setIsPlaying(true);
+            } else {
+              if (bgMode === 'video' && videoRef.current) videoRef.current.pause();
+              setIsPlaying(false);
+            }
+          };
+
+          const handleVideoError = () => {
+            if (bgMode === 'video' && !localVideoUrl) {
+              setBgMode('chroma');
+              alert("O navegador bloqueou a reprodução direta do Google Drive. Fundo alterado para Chroma Key. Carregue o Ficheiro Local para ter o vídeo de fundo.");
+            }
+          };
+
+          const resetTime = () => {
+            timeRef.current = 0;
+            if (videoRef.current && videoRef.current.readyState > 0) {
+                videoRef.current.currentTime = 0;
+            }
+            if (previewProgressBarRef.current) previewProgressBarRef.current.style.width = '0%';
+            if (hudTimeRef.current) hudTimeRef.current.innerText = '0.00s';
+            setActiveSubtitle(null);
+            activeSubRef.current = null;
+          };
+
+          const handleVideoUpload = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const url = URL.createObjectURL(file);
+              setLocalVideoUrl(url);
+              setBgMode('video');
+              resetTime();
+            }
+          };
+
+          // LOOP DE PRÉ-VISUALIZAÇÃO ULTRA RÁPIDO (60 FPS Nativos sem Re-renders Pesados)
+          useEffect(() => {
+            let lastTime = performance.now();
+            let frameId;
+
+            const loop = (now) => {
+              if (isPlaying && countdown === null) {
+                // Atualizar o Tempo
+                let time = timeRef.current;
+                if (bgMode === 'video' && videoRef.current && videoRef.current.readyState >= 2 && !videoRef.current.paused && videoRef.current.networkState !== 3) {
+                  time = videoRef.current.currentTime;
+                  if (videoRef.current.ended || time >= 54.2) {
+                      setIsPlaying(false);
+                  }
+                } else {
+                  const delta = (now - lastTime) / 1000;
+                  time = timeRef.current + delta;
+                  if (time >= 54.2) {
+                      setIsPlaying(false);
+                      time = 0;
+                  }
+                }
+                
+                timeRef.current = time;
+
+                // Atualização do DOM Direta (Bypass do React para performance máxima)
+                if (previewProgressBarRef.current) {
+                    previewProgressBarRef.current.style.width = `${(time / 54.2) * 100}%`;
+                }
+                if (hudTimeRef.current) {
+                    hudTimeRef.current.innerText = `${time.toFixed(2)}s`;
+                }
+                if (videoRef.current && bgMode === 'video') {
+                    videoRef.current.style.transform = `scale(${getZoomLevel(time)}) translateY(-6%)`;
+                }
+
+                // Só re-renderiza o componente React quando a legenda muda
+                const sub = subtitleData.find(s => time >= s.start && time <= s.end) || null;
+                if (sub?.id !== activeSubRef.current?.id) {
+                    activeSubRef.current = sub;
+                    setActiveSubtitle(sub);
+                }
+              }
+              lastTime = now;
+              frameId = requestAnimationFrame(loop);
+            };
+
+            frameId = requestAnimationFrame(loop);
+            return () => cancelAnimationFrame(frameId);
+          }, [isPlaying, countdown, bgMode]);
+
+          // LÓGICA PARA TELA LIMPA & GRAVAÇÃO MANUAL
+          const startRecordingMode = () => {
+            setIsDownloadModalOpen(false);
+            setIsRecordingMode(true);
+            setShowGuides(false);
+            resetTime();
+            // Mantém o modo que o utilizador escolheu (video ou chroma)
+            setCountdown(5);
+          };
+
+          useEffect(() => {
+            if (countdown === null) return;
+            if (countdown > 0) {
+              const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+              return () => clearTimeout(timer);
+            } else if (countdown === 0) {
+              setCountdown(null);
+              setIsPlaying(true);
+              safePlayVideo();
+            }
+          }, [countdown]);
+
+          const stopRecordingMode = () => {
+            setIsRecordingMode(false);
+            setIsPlaying(false);
+            setCountdown(null);
+            if (videoRef.current) videoRef.current.pause();
+          };
+
+          return (
+            <div className="flex w-full h-screen bg-[#0a0a0a] text-white font-sans overflow-hidden">
+              {/* CSS ORIGINAL DE ALTA QUALIDADE */}
+              <style>{`
+                @keyframes popIn { 0% { transform: scale(0.85) translateY(15px); opacity: 0; filter: blur(4px); } 60% { transform: scale(1.05) translateY(-2px); opacity: 1; filter: blur(0px); } 100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); } }
+                .word-reveal { display: inline-block; animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; }
+                .text-glow-white { text-shadow: 0 3px 8px rgba(0,0,0,0.95), 0 0 15px rgba(255,255,255,0.25); }
+                .text-glow-blue { color: #0043FF; text-shadow: 0 3px 6px rgba(0,0,0,0.95), 0 0 20px rgba(0,67,255,0.8); }
+                .text-shadow-logo { text-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+                @keyframes bounce-slow { 0%, 100% { transform: translateY(-5%); } 50% { transform: translateY(5%); } }
+                .animate-bounce-slow { animation: bounce-slow 2.5s infinite ease-in-out; }
+                @keyframes containerFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+                .subtitle-container { animation: containerFloat 4s ease-in-out infinite; }
+                @keyframes orbit { 0% { transform: rotate(0deg) translateX(120px) rotate(0deg) scale(1); } 50% { transform: rotate(180deg) translateX(120px) rotate(-180deg) scale(1.5); } 100% { transform: rotate(360deg) translateX(120px) rotate(-360deg) scale(1); } }
+                @keyframes orbit-reverse { 0% { transform: rotate(360deg) translateX(80px) rotate(-360deg) scale(0.8); } 50% { transform: rotate(180deg) translateX(80px) rotate(-180deg) scale(1.2); } 100% { transform: rotate(0deg) translateX(80px) rotate(0deg) scale(0.8); } }
+                .orbiting-dot-1 { position: absolute; top: 50%; left: 50%; margin-top: -3px; margin-left: -3px; width: 6px; height: 6px; background-color: #0043FF; border-radius: 50%; box-shadow: 0 0 12px 4px rgba(0,67,255,0.5); animation: orbit 5s linear infinite; }
+                .orbiting-dot-2 { position: absolute; top: 50%; left: 50%; margin-top: -2px; margin-left: -2px; width: 4px; height: 4px; background-color: #F4F4F4; border-radius: 50%; box-shadow: 0 0 8px 2px rgba(255,255,255,0.4); animation: orbit-reverse 4s linear infinite; }
+                .color-graded-video { filter: contrast(1.05) saturate(1.10); }
+                .vignette-effect { background: radial-gradient(circle, rgba(0,0,0,0) 50%, rgba(0,0,0,0.4) 100%); pointer-events: none; }
+              `}</style>
+
+              {/* MODAL DE INSTRUÇÕES DE GRAVAÇÃO (OBS/QUICKTIME) */}
+              {isDownloadModalOpen && (
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+                  <div className="bg-[#111] border border-white/10 rounded-3xl p-8 max-w-lg w-full shadow-2xl relative">
+                    <h2 className="text-2xl font-black mb-2 flex items-center gap-3 tracking-tight text-white">
+                      <Video className="text-[#0043FF]" size={28} /> Preparar para Gravação
+                    </h2>
+                    
+                    <div className="space-y-4 mt-6">
+                      <div className="p-5 border border-white/10 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
+                         <h3 className="font-bold text-white mb-2 text-md">Grave com o OBS ou Gravador de Ecrã</h3>
+                         <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
+                           A aplicação irá esconder todos os botões e menus e iniciar uma contagem de 5 segundos. Utilize o seu gravador de ecrã favorito para capturar o resultado final com a qualidade original exata da pré-visualização!
+                         </p>
+                         
+                         <button onClick={startRecordingMode} className="w-full py-3 bg-[#0043FF] hover:bg-blue-600 text-white rounded-xl font-bold transition-colors text-sm flex items-center justify-center gap-2">
+                            <Video size={16} /> LIMPAR TELA E INICIAR CONTAGEM (5s)
+                         </button>
+                      </div>
+                    </div>
+
+                    <button onClick={() => setIsDownloadModalOpen(false)} className="w-full mt-4 py-3 bg-transparent text-neutral-500 hover:text-white font-bold transition-colors text-sm">
+                      FECHAR
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* PAINEL LATERAL DE CONTROLO */}
+              {!isRecordingMode && (
+                <div className="w-80 h-full border-r border-white/10 bg-[#111] p-6 flex flex-col gap-6 z-20 shrink-0 overflow-y-auto shadow-2xl">
+                  <div className="space-y-1 pb-4 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-[#0043FF] rounded-full flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(0,67,255,0.4)]">O</div>
+                      <h1 className="text-lg font-bold tracking-tight">ORY STUDIO</h1>
+                    </div>
+                    <p className="text-[10px] text-neutral-500 font-medium uppercase tracking-[0.2em]">Cinematic Edit</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button 
+                      onClick={togglePlay}
+                      className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${isPlaying ? 'bg-white text-black shadow-lg' : 'bg-[#0043FF] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/20'}`}
+                    >
+                      {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                      {isPlaying ? 'PAUSAR PREVIEW' : 'REPRODUZIR PREVIEW'}
+                    </button>
+                    <button 
+                      onClick={resetTime}
+                      className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <RefreshCw size={14} /> RESETAR TEMPO
+                    </button>
+                  </div>
+
+                  <div className="pt-2 space-y-3">
+                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Opções de Visualização</p>
+                    
+                    <div className="grid grid-cols-2 gap-2 bg-black/50 p-1 rounded-xl border border-white/5">
+                      <button 
+                        onClick={() => setBgMode('video')}
+                        className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${bgMode === 'video' ? 'bg-white text-black' : 'text-neutral-500 hover:text-white'}`}
+                      >
+                        <Video size={14} /> VÍDEO
+                      </button>
+                      <button 
+                        onClick={() => setBgMode('chroma')}
+                        className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${bgMode === 'chroma' ? 'bg-[#00FF00] text-black' : 'text-neutral-500 hover:text-white'}`}
+                      >
+                        <ImageIcon size={14} /> CHROMA
+                      </button>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+                      <input type="file" accept="video/*" className="hidden" ref={fileInputRef} onChange={handleVideoUpload} />
+                      <button 
+                        onClick={() => fileInputRef.current.click()}
+                        className={`w-full py-3 px-4 rounded-xl border text-xs font-bold flex items-center justify-between transition-all ${localVideoUrl ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-white/10 text-neutral-400 hover:bg-white/5'}`}
+                      >
+                        {localVideoUrl ? 'VÍDEO CARREGADO ✓' : 'CARREGAR FICHEIRO LOCAL'}
+                        <Upload size={16} />
+                      </button>
+                    </div>
+
+                    <button 
+                      onClick={() => setShowGuides(!showGuides)}
+                      className={`w-full mt-2 py-3 px-4 rounded-xl border text-xs font-bold flex items-center justify-between transition-all ${showGuides ? 'border-[#0043FF] bg-[#0043FF]/10 text-[#0043FF]' : 'border-white/10 text-neutral-400 hover:bg-white/5'}`}
+                    >
+                      MOSTRAR GUIAS DE ROSTO
+                      {showGuides ? <Eye size={16} /> : <EyeOff size={16} />}
+                    </button>
+                  </div>
+
+                  <div className="mt-auto space-y-4 pt-4">
+                    <button 
+                      onClick={() => setIsDownloadModalOpen(true)}
+                      className={`w-full py-4 rounded-2xl font-black text-sm shadow-xl transition-all flex flex-col items-center justify-center gap-1 bg-[#0043FF] text-white hover:scale-[1.02] shadow-blue-500/20`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Video size={18} />
+                        PREPARAR PARA GRAVAR (OBS)
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ÁREA DE RENDERIZAÇÃO DOM (O preview exato que será gravado) */}
+              <div className="flex-1 h-full flex items-center justify-center relative p-0 sm:p-8 bg-black">
+                
+                {countdown !== null && countdown > 0 && (
+                  <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
+                    <h2 className="text-4xl font-black text-white mb-6 text-center leading-tight">
+                      Inicie a sua gravação no OBS<br/>
+                      <span className="text-[#0043FF]">A reprodução arranca em:</span>
+                    </h2>
+                    <div className="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(0,67,255,0.8)] animate-pulse">
+                      {countdown}
+                    </div>
+                  </div>
+                )}
+                
+                {isRecordingMode && countdown === null && (
+                  <button onClick={stopRecordingMode} className="absolute top-6 left-6 z-50 px-4 py-2 bg-red-600/30 hover:bg-red-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-2 transition-all opacity-20 hover:opacity-100">
+                    <Pause size={14} fill="currentColor" /> SAIR DA TELA LIMPA
+                  </button>
+                )}
+
+                {!isRecordingMode && (
+                  <div className="absolute top-6 right-6 flex items-center gap-4 z-50 bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 hidden sm:flex">
+                     <div className="flex flex-col items-end">
+                       <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-[0.2em]">Timecode</span>
+                       <span ref={hudTimeRef} className="text-xl font-mono text-white tracking-widest leading-none mt-1">0.00s</span>
+                     </div>
+                  </div>
+                )}
+
+                <div 
+                  className="relative overflow-hidden transition-all duration-500 flex items-center justify-center"
+                  style={{ 
+                    aspectRatio: '9/16', 
+                    height: '100%',
+                    maxHeight: isRecordingMode ? '100vh' : '85vh',
+                    backgroundColor: bgMode === 'chroma' ? ORY_COLORS.green : '#000',
+                    borderRadius: isRecordingMode ? '0px' : '20px',
+                    border: isRecordingMode ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: isRecordingMode ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 80px rgba(0,67,255,0.1)'
+                  }}
+                >
+                  {bgMode === 'video' && (
+                    <div className="absolute inset-0 w-full h-full bg-black z-0">
+                      <video
+                        ref={videoRef}
+                        src={localVideoUrl || DRIVE_VIDEO_URL}
+                        crossOrigin="anonymous"
+                        className="absolute inset-0 w-full h-full object-cover color-graded-video origin-center"
+                        style={{ transform: `scale(1.15) translateY(-6%)`, transition: 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1)' }}
+                        playsInline
+                        preload="auto"
+                      />
+                      <div className="absolute inset-0 vignette-effect"></div>
+                    </div>
+                  )}
+
+                  <div className="absolute top-12 left-1/2 -translate-x-1/2 flex flex-col items-end pointer-events-none z-10">
+                     <div className="relative">
+                        <div className="absolute -top-1 -right-2 w-10 h-10 rounded-full bg-[#0043FF] animate-bounce-slow shadow-[0_0_20px_rgba(0,67,255,0.3)]" style={{ zIndex: 0 }}></div>
+                        <span className="relative z-10 text-[48px] leading-none font-black text-[#303030] tracking-tighter text-shadow-logo">ORY</span>
+                     </div>
+                     <span className="text-[16px] leading-none text-[#0043FF] font-medium lowercase pr-1 mt-1 tracking-wide text-shadow-logo">clínica</span>
+                  </div>
+
+                  {showGuides && !isRecordingMode && (
+                    <div className="absolute inset-0 pointer-events-none z-10 border border-white/20">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                         <div className="w-64 h-64 border-2 border-dashed border-white/30 rounded-full bg-white/5 flex items-center justify-center">
+                            <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest text-center shadow-lg">Rosto do<br/>Paciente</span>
+                         </div>
+                      </div>
+                      <div className="absolute bottom-24 w-full h-[1px] bg-red-500/30"></div>
+                    </div>
+                  )}
+
+                  {/* LEGENDAS (O DOM Exato do Preview) */}
+                  <div className="absolute bottom-20 left-0 right-0 px-6 z-20 pointer-events-none flex flex-col items-center">
+                    {activeSubtitle && (
+                      <div className="subtitle-container relative py-3 px-5 bg-[#0f0f0f]/45 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                        <div className="absolute inset-0 pointer-events-none overflow-visible z-0 opacity-40">
+                           <div className="orbiting-dot-1"></div>
+                           <div className="orbiting-dot-2"></div>
+                        </div>
+
+                        <div className="relative flex flex-wrap justify-center gap-x-1.5 gap-y-0 max-w-[95%] text-center z-10 leading-[1.1]">
+                          {activeSubtitle.text.split(' ').map((word, idx) => {
+                            const isKeyword = word.length > 7 || word.includes('Laurinha') || word.includes('alinhadores') || word.includes('animada');
+                            return (
+                              <span key={`${activeSubtitle.id}-${idx}`} className="word-reveal" style={{ animationDelay: `${idx * 0.05}s` }}>
+                                <span className={`text-[26px] md:text-[30px] font-black uppercase tracking-tight transition-all duration-300 ${isKeyword ? 'text-glow-blue' : 'text-[#F4F4F4] text-glow-white'}`}>
+                                  {word}
+                                </span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="absolute bottom-0 left-0 w-full h-1 bg-black/40 z-30">
+                    <div ref={previewProgressBarRef} className="h-full bg-[#0043FF] shadow-[0_0_10px_rgba(0,67,255,0.8)]" style={{ width: '0%' }}></div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
